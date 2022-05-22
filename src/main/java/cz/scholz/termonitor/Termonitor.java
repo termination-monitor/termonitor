@@ -4,101 +4,117 @@
  */
 package cz.scholz.termonitor;
 
+import io.fabric8.kubernetes.api.model.MicroTime;
+import io.fabric8.kubernetes.api.model.ObjectReferenceBuilder;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.events.v1.Event;
+import io.fabric8.kubernetes.api.model.events.v1.EventBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
-import io.quarkus.runtime.Quarkus;
+import io.fabric8.kubernetes.client.informers.SharedIndexInformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine;
 
-import javax.inject.Inject;
-import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
-@CommandLine.Command
-public class Termonitor implements Runnable {
+public class Termonitor {
     private static final Logger LOG = LoggerFactory.getLogger(Termonitor.class);
 
-    @CommandLine.Option(names = {"-t", "--threshold"}, description = "The threshold (in % or grace period) at which an alert should be raised", defaultValue = "90")
-    int thresholdPercentage;
+    private static final DateTimeFormatter K8S_MICROTIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'.'SSSSSSXXX").withZone(ZoneId.from(ZoneOffset.UTC));
 
     private final Map<String, PodTermination> tracking = new HashMap<>();
+    private final int thresholdPercentage;
+    private final SharedIndexInformer<Pod> podInformer;
+    private final KubernetesClient client;
 
-    @Inject
-    KubernetesClient kubernetesClient;
+    public Termonitor(KubernetesClient client, int thresholdPercentage) {
+        this.client = client;
+        this.thresholdPercentage = thresholdPercentage;
 
-    @Override
-    public void run() {
-        kubernetesClient.pods().inAnyNamespace().inform().addEventHandlerWithResyncPeriod(new ResourceEventHandler<>() {
+        this.podInformer = this.client.pods().inAnyNamespace().inform();
+        this.podInformer.addEventHandlerWithResyncPeriod(new ResourceEventHandler<>() {
             @Override
             public void onAdd(Pod pod) {
-                handlePod(pod);
+                handlePodUpdate(pod);
             }
 
             @Override
             public void onUpdate(Pod oldPod, Pod newPod) {
-                handlePod(newPod);
+                handlePodUpdate(newPod);
             }
 
             @Override
             public void onDelete(Pod pod, boolean deletedFinalStateUnknown) {
-                handleDeletedPod(pod);
+                handlePodDeleted(pod);
             }
         }, 10 * 60 * 1000);
-
-        Quarkus.waitForExit();
     }
 
-    void handlePod(Pod pod) {
+    void handlePodUpdate(Pod pod) {
         LOG.debug("Pod {}/{} updated", pod.getMetadata().getNamespace(), pod.getMetadata().getName());
 
         if (pod.getMetadata().getDeletionTimestamp() != null)   {
-            registerPodDeleting(pod);
+            registerOngoingDeletion(pod);
         }
     }
 
-    void handleDeletedPod(Pod pod) {
-        if (tracking.containsKey(pod.getMetadata().getUid()))   {
-            Duration elapsed = Duration.between(tracking.get(pod.getMetadata().getUid()).deletionInstant, Instant.now());
-            LOG.info("Pod {}/{} deleted after {} seconds (out of {})", pod.getMetadata().getNamespace(), pod.getMetadata().getName(), elapsed.getSeconds(), tracking.get(pod.getMetadata().getUid()).deletionGracePeriodSeconds);
-            tracking.remove(pod.getMetadata().getUid());
+    void handlePodDeleted(Pod pod) {
+        PodTermination pt = tracking.get(pod.getMetadata().getUid());
+
+        if (pt != null)   {
+            long elapsedPercentage = pt.elapsedPercentage();
+            long elapsedSeconds = pt.elapsedSeconds();
+
+            if (elapsedPercentage > thresholdPercentage) {
+                LOG.warn("Pod {}/{} deleted after {} seconds ({}% out of {} second grace period)", pt.namespace, pt.name, elapsedSeconds, elapsedPercentage, pt.deletionGracePeriodSeconds);
+                raiseEvent(pod, pt, elapsedPercentage, elapsedSeconds);
+            } else {
+                LOG.info("Pod {}/{} deleted after {} seconds ({}% out of {} second grace period)", pt.namespace, pt.name, elapsedSeconds, elapsedPercentage, pt.deletionGracePeriodSeconds);
+            }
+
+            tracking.remove(pt.uuid);
         } else {
-            LOG.warn("Pod {}/{} was deleted, but the deletion was not tracked", pod.getMetadata().getNamespace(), pod.getMetadata().getName());
-            tracking.put(pod.getMetadata().getUid(), PodTermination.fromPod(pod));
+            LOG.error("Pod {}/{} was deleted, but the deletion was not tracked", pod.getMetadata().getNamespace(), pod.getMetadata().getName());
         }
     }
 
-    void registerPodDeleting(Pod pod)   {
-        if (tracking.containsKey(pod.getMetadata().getUid()))   {
-            Duration elapsed = Duration.between(tracking.get(pod.getMetadata().getUid()).deletionInstant, Instant.now());
-            LOG.info("Pod {}/{} deletion is ongoing for {} seconds (out of {})", pod.getMetadata().getNamespace(), pod.getMetadata().getName(), elapsed.getSeconds(), tracking.get(pod.getMetadata().getUid()).deletionGracePeriodSeconds);
+    void registerOngoingDeletion(Pod pod)   {
+        PodTermination pt = tracking.get(pod.getMetadata().getUid());
+
+        if (pt != null)   {
+            LOG.debug("Pod {}/{} still deleting after {} seconds ({}% out of {} second grace period)", pt.namespace, pt.name, pt.elapsedSeconds(), pt.elapsedPercentage(), pt.deletionGracePeriodSeconds);
         } else {
-            LOG.warn("Pod {}/{} deletion started at {} with termination grace period of {} seconds", pod.getMetadata().getNamespace(), pod.getMetadata().getName(), pod.getMetadata().getDeletionTimestamp(), pod.getMetadata().getDeletionGracePeriodSeconds());
-            tracking.put(pod.getMetadata().getUid(), PodTermination.fromPod(pod));
+            LOG.info("Pod {}/{} deletion started at {} with termination grace period of {} seconds", pod.getMetadata().getNamespace(), pod.getMetadata().getName(), pod.getMetadata().getDeletionTimestamp(), pod.getMetadata().getDeletionGracePeriodSeconds());
+            tracking.put(pod.getMetadata().getUid(), new PodTermination(pod));
         }
     }
-}
 
-class PodTermination  {
-    String namespace;
-    String name;
-    String deletionTimestamp;
-    long deletionGracePeriodSeconds;
-    Instant deletionInstant;
+    void raiseEvent(Pod pod, PodTermination pt, long elapsedPercentage, long elapsedSeconds)    {
+        Event event = new EventBuilder()
+                .withNewMetadata()
+                    .withNamespace(pt.namespace)
+                    .withGenerateName("termonitor")
+                .endMetadata()
+                .withEventTime(new MicroTime(K8S_MICROTIME.format(Instant.now())))
+                .withReportingController("scholz.cz/termonitor")
+                .withReportingInstance("termonitor")
+                .withAction("PodTerminationWarning")
+                .withReason("PodTerminationTookTooLong")
+                .withType("Normal")
+                .withRegarding(new ObjectReferenceBuilder()
+                        .withApiVersion("v1")
+                        .withKind("Pod")
+                        .withNamespace(pt.namespace)
+                        .withName(pt.name)
+                        .build())
+                .withNote(String.format("Pod %s/%s deleted after %d seconds (%d%% out of %d second grace period)", pt.namespace, pt.name, elapsedSeconds, elapsedPercentage, pt.deletionGracePeriodSeconds))
+                .build();
 
-    public PodTermination(String namespace, String name, String deletionTimestamp, long deletionGracePeriodSeconds) {
-        this.namespace = namespace;
-        this.name = name;
-        this.deletionTimestamp = deletionTimestamp;
-        //this.deletionInstant = Instant.parse(deletionTimestamp);
-        this.deletionInstant = Instant.now();
-        this.deletionGracePeriodSeconds = deletionGracePeriodSeconds;
-    }
-
-    public static PodTermination fromPod(Pod pod)  {
-        return new PodTermination(pod.getMetadata().getNamespace(), pod.getMetadata().getName(), pod.getMetadata().getDeletionTimestamp(), pod.getMetadata().getDeletionGracePeriodSeconds());
+        client.events().v1().events().create(event);
     }
 }

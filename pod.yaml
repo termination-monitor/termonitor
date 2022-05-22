@@ -8,5 +8,14 @@ spec:
       image: busybox:latest
       imagePullPolicy: IfNotPresent
       command:
-        - sleep
+        - "sleep"
         - "3600"
+      lifecycle:
+        preStop:
+          exec:
+            command:
+              - "sleep"
+              - "15"
+#      command:
+#        - sleep
+#        - "3600"
