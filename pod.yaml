@@ -1,0 +1,12 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test-pod
+spec:
+  containers:
+    - name: busy
+      image: busybox:latest
+      imagePullPolicy: IfNotPresent
+      command:
+        - sleep
+        - "3600"
