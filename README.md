@@ -1,52 +1,42 @@
-# termonitor Project
+# Termonitor
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Pod **Ter**mination **Monitor** is a utility to monitor pod termination.
+Currently, it measures how much of the termination grace period the pod needs to terminate.
+When it needs more than the configured limit, a warning will be raised in the form of a Kubernetes Event.
+Especially for stateful applications it is important to shut down cleanly and in time.
+Being force-killed after the termination grace period is over might result in an unclean shutdown when not all connections are closed cleanly, not all data are saved.
+It can also cause prolonged startup of sa new pod which might for example recreate some indexes or repair some files _damaged_ in the unclean shutdown.
+(The exact issues might differ and depend on the exact information)
 
-If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
+## Configuration
 
-## Running the application in dev mode
 
-You can run your application in dev mode that enables live coding using:
+
+## Installation
+
+
+
+## Getting help
+
+If you encounter any issues while using this project, you can get help using [GitHub Discussions](https://github.com/scholzj/termonitor/discussions)
+
+## Contributing
+
+All contributions and ideas are welcomed!
+
+## License
+
+This project is licensed under the [version 2.0 of the Apache License](./LICENSE).
+
+## Building and Testing
+
+This project is written in Java and uses Quarkus Java Framework.
+If you want to learn more about Quarkus, please visit its website: https://quarkus.io/.
+
+### Running the application in dev mode
+
+You can run your application in dev mode from your local environment:
+
 ```shell script
-./mvnw compile quarkus:dev
+mvn compile quarkus:dev
 ```
-
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at http://localhost:8080/q/dev/.
-
-## Packaging and running the application
-
-The application can be packaged using:
-```shell script
-./mvnw package
-```
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-```shell script
-./mvnw package -Dquarkus.package.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using: 
-```shell script
-./mvnw package -Pnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using: 
-```shell script
-./mvnw package -Pnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/termonitor-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult https://quarkus.io/guides/maven-tooling.
-
-## Related Guides
-
-- Kubernetes Client ([guide](https://quarkus.io/guides/kubernetes-client)): Interact with Kubernetes and develop Kubernetes Operators
