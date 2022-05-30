@@ -10,15 +10,29 @@ It can also cause prolonged startup of sa new pod which might for example recrea
 
 ## Configuration
 
+Following configuration options are currently supported:
 
+| Option      | Description                                                             | Default | Example        |
+|:------------|:------------------------------------------------------------------------|:--------|:---------------|
+| --threshold | The threshold (in % or grace period) at which an alert should be raised | 75      | --threshold=80 |
 
 ## Installation
 
+You can install the last stable release of Termonitor using the YAML files in the [`./install`](./install) directory:
 
+```shell
+kubectl apply -f install/
+```
+
+This will create a new namespace `termonitor` and deploy Termonitor inside.
+It will also create the RBAC files required by Termonitor.
+If you want, you can customize the files to install it into a different namespace.
+Termonitor currently doesn't support watching only selected namespaces.
+It currently always watches the whole cluster.
 
 ## Getting help
 
-If you encounter any issues while using this project, you can get help using [GitHub Discussions](https://github.com/scholzj/termonitor/discussions)
+If you encounter any issues while using this project, you can get help in [GitHub Discussions](https://github.com/scholzj/termonitor/discussions)
 
 ## Contributing
 
@@ -32,6 +46,19 @@ This project is licensed under the [version 2.0 of the Apache License](./LICENSE
 
 This project is written in Java and uses Quarkus Java Framework.
 If you want to learn more about Quarkus, please visit its website: https://quarkus.io/.
+
+### Running the latest version from the `main` branch
+
+You can run the latest in-development version from the `main` GitHub branch using the files from the  [`./pckagin/install`](./packaging/install) directory:
+
+```shell
+kubectl apply -f packaging/install/
+```
+
+This will use the container image with the `:latest` tag.
+
+If you need to make any changes to the Kubernetes installation files, you should also do them in the [`./pckagin/install`](./packaging/install) directory.
+The [`./install`](./install) directory is updated only during releases.
 
 ### Running the application in dev mode
 
