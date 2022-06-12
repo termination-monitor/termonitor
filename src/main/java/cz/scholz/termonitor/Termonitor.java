@@ -105,7 +105,7 @@ public class Termonitor {
                 .withReportingInstance("termonitor")
                 .withAction("PodTerminationWarning")
                 .withReason("PodTerminationTookTooLong")
-                .withType("Normal")
+                .withType("Warning")
                 .withRegarding(new ObjectReferenceBuilder()
                         .withApiVersion("v1")
                         .withKind("Pod")

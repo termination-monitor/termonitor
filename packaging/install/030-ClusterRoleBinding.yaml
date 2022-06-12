@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: termonitor
+  labels:
+    app: termonitor
+subjects:
+  - kind: ServiceAccount
+    name: termonitor
+    namespace: termonitor
+roleRef:
+  kind: ClusterRole
+  name: termonitor
+  apiGroup: rbac.authorization.k8s.io

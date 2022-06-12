@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: termonitor
+  labels:
+    app: termonitor
+  namespace: termonitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: termonitor
+  template:
+    metadata:
+      labels:
+        app: termonitor
+    spec:
+      serviceAccountName: termonitor
+      containers:
+        - name: termonitor
+          image: ghcr.io/termination-monitor/termonitor:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8443
+              name: https
+          command:
+            - "./application"
+            - "--threshold=75"
+#          livenessProbe:
+#            httpGet:
+#              path: /health
+#              port: http
+#            initialDelaySeconds: 10
+#            periodSeconds: 30
+#          readinessProbe:
+#            httpGet:
+#              path: /health
+#              port: http
+#            initialDelaySeconds: 10
+#            periodSeconds: 30
+  strategy:
+    type: RollingUpdate
