@@ -115,6 +115,6 @@ public class Termonitor {
                 .withNote(String.format("Pod %s/%s deleted after %d seconds (%d%% out of %d second grace period)", pt.namespace, pt.name, elapsedSeconds, elapsedPercentage, pt.deletionGracePeriodSeconds))
                 .build();
 
-        client.events().v1().events().create(event);
+        client.events().v1().events().inNamespace(pt.namespace).create(event);
     }
 }

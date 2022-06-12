@@ -47,6 +47,10 @@ This project is licensed under the [version 2.0 of the Apache License](./LICENSE
 This project is written in Java and uses Quarkus Java Framework.
 If you want to learn more about Quarkus, please visit its website: https://quarkus.io/.
 
+### Building the latest version
+
+You can use the `make` build to build the project.
+
 ### Running the latest version from the `main` branch
 
 You can run the latest in-development version from the `main` GitHub branch using the files from the  [`./pckagin/install`](./packaging/install) directory:
