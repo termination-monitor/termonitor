@@ -3,9 +3,9 @@
 ###
 FROM quay.io/quarkus/quarkus-micro-image:1.0
 
-LABEL org.opencontainers.image.source=https://github.com/termination-monitor/termonitor \
-      summary="Pod Termination Monitor" \
-      description="Utility for monitoring Pod Terminations"
+LABEL org.opencontainers.image.source=https://github.com/termination-monitor/termonitor
+LABEL org.opencontainers.image.title="Pod Termination Monitor"
+LABEL org.opencontainers.image.description="Utility for monitoring Pod Terminations"
 
 WORKDIR /work/
 
