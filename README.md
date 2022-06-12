@@ -38,6 +38,10 @@ If you encounter any issues while using this project, you can get help in [GitHu
 
 All contributions and ideas are welcomed!
 
+## Roadmap
+
+You can check the roadmap in our [GitHub project](https://github.com/orgs/termination-monitor/projects/1/views/1).
+
 ## License
 
 This project is licensed under the [version 2.0 of the Apache License](./LICENSE).
