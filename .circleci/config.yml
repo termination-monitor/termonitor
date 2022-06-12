@@ -13,7 +13,7 @@ jobs:
       - checkout
       - run:
           name: Build code
-          command: make build
+          command: make java_install
       - run:
           name: Build Docker images
           command: make docker_build
