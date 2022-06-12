@@ -63,7 +63,7 @@ jobs:
       - run:
           name: Create manifest
           command: |
-              docker manifest create ghcr.io/termination-monitor/termonitor:latest ghcr.io/scholzj/termonitor:latest-amd64
+              docker manifest create ghcr.io/termination-monitor/termonitor:latest ghcr.io/termination-monitor/termonitor:latest-amd64
       - deploy:
           name: Login to Docker Hub
           command: docker login ghcr.io -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
